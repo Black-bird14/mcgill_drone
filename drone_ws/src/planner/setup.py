@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'networkx', 'shapely', 'typing_extensions', 'matplotlib'],
     zip_safe=True,
     maintainer='axia',
     maintainer_email='alexianatenin.ans@gmail.com',
@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'planner= planner.path_planner:main'
         ],
     },
 )
