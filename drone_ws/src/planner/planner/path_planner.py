@@ -91,8 +91,32 @@ class path_planner(Node):
             else:
                 print("Waypoint is outside the mission boundary.")
         #TODO: ASSEMBLE NODE SET
+        nodes = [start] + waypoints + boundary
         #TODO: BUILD VISIBILITY EDGES WITH SHAPELY
+        edges = []
+        for i, u in enumerate(nodes):
+            for j, v in enumerate(nodes):
+                if i >= j:
+                    continue  # avoid duplicate pairs and self-pairs
+                
+                line = LineString([u, v])
+                
+                if boundary_polygon.covers(line):
+                    # edge is valid
+                    weight = line.length  # Euclidean distance
+                    edges.append( (u, v, weight) )
+        self.plot_visibility_graph(boundary, nodes, edges)
         #TODO: BUILD GRAPH WITH NETWORKX
+        G = nx.Graph()
+        G.add_nodes_from(nodes)
+        G.add_weighted_edges_from(edges)
+        lengths = dict(nx.shortest_path_length(G, start))
+
+        wp_distances = {}
+        for wp in waypoints:
+            if wp in lengths.keys():
+                wp_distances[wp] = lengths[wp]
+        print(wp_distances)
 
     def publish_path(self, full_path: List[Tuple[float, float]]) -> None:
         """
@@ -134,6 +158,29 @@ class path_planner(Node):
         plt.gca().set_aspect('equal')
         plt.legend()
         plt.title("Polygon Visualization")
+        plt.grid(True)
+        plt.show()
+
+    def plot_visibility_graph(self, boundary, nodes, edges) -> None:
+        boundary_polygon = Polygon(boundary)
+        
+        # Plot the polygon boundary
+        x, y = boundary_polygon.exterior.xy
+        plt.plot(x, y, color='blue', label='Boundary')
+
+        # Plot nodes
+        nx, ny = zip(*nodes)
+        plt.scatter(nx, ny, color='purple', zorder=5, label='Nodes')
+
+        # Plot edges
+        for u, v, _ in edges:
+            line = LineString([u, v])
+            lx, ly = line.xy
+            plt.plot(lx, ly, color='green', linewidth=1, zorder=2)
+        
+        plt.gca().set_aspect('equal')
+        plt.legend()
+        plt.title('Visibility Graph')
         plt.grid(True)
         plt.show()
 
