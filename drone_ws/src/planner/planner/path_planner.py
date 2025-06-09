@@ -53,11 +53,11 @@ class path_planner(Node):
             ]
             waypoints = [
                 (1, 1),
+                (1, 6),
+                (2, 8),
                 (3, 2),
                 (4, 5),
-                (6, 6),
-                (2, 8),
-                (1, 6)
+                (6, 6)
             ]
             self.boundary_xy = boundary_
             self.waypoints_xy = waypoints
@@ -80,19 +80,19 @@ class path_planner(Node):
         )-> List[Tuple[float, float]]:
 
         """ Build 2D Visibility Graph """
-        #TODO: CREATE BOUNDARY POLYGON (SELF.BOUNDARY) WITH SHAPELY
+        #Create the mission bonudary polygon
         boundary_polygon = Polygon(boundary)# Define your polygon (example: square with a hole) 
         #visualise(boundary_polygon)
         
-        #TODO: ENSURE EACH WP INSIDE POLYGON
+        #Ensure the wps are within the mission boundary
         for wp in waypoints:
             if boundary_polygon.contains(Point(wp)):
                 print("Waypoint is inside the mission boundary.")
             else:
-                print("Waypoint is outside the mission boundary.")
-        #TODO: ASSEMBLE NODE SET
+                self.get_logger().warn(f"Waypoint {wp} is outside mission boundary!")
+        #Assemble the node set
         nodes = [start] + waypoints + boundary
-        #TODO: BUILD VISIBILITY EDGES WITH SHAPELY
+        #Build the visibility edges
         edges = []
         for i, u in enumerate(nodes):
             for j, v in enumerate(nodes):
@@ -106,17 +106,22 @@ class path_planner(Node):
                     weight = line.length  # Euclidean distance
                     edges.append( (u, v, weight) )
         self.plot_visibility_graph(boundary, nodes, edges)
-        #TODO: BUILD GRAPH WITH NETWORKX
+
+        #Build the graph
         G = nx.Graph()
         G.add_nodes_from(nodes)
         G.add_weighted_edges_from(edges)
-        lengths = dict(nx.shortest_path_length(G, start))
 
-        wp_distances = {}
-        for wp in waypoints:
-            if wp in lengths.keys():
-                wp_distances[wp] = lengths[wp]
-        print(wp_distances)
+        #Build the path -- expectation: wps are ordered
+        full_path = [start]
+        current = start
+        for target in waypoints:
+            segment = nx.shortest_path(G, source=current, target=target, weight="weight")
+            full_path.extend(segment[1:])  # avoid duplicating the first node
+            current = target
+        #print(full_path)
+        return full_path
+
 
     def publish_path(self, full_path: List[Tuple[float, float]]) -> None:
         """
